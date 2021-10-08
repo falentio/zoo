@@ -1,0 +1,15 @@
+default_server:
+  npm: esm.sh
+
+deps:
+  npm:
+    ky: {}
+    handlebars: {}
+    bson: {}
+    ejs: {}
+    quick-lru:
+        version: f1
+  github:
+    falentio/jaran:
+      path: index
+      alias: nam
