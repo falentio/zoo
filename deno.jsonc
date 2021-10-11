@@ -1,17 +1,18 @@
 {
 	"fmt": {
 		"files": {
-			"include": ["core/"]
+			"include": ["core/", "mod.ts"]
 		},
 		"options": {
 			"useTabs": true,
 			"indentWidth": 4,
-			"singleQuote": false
+			"singleQuote": false,
+			"lineWidth": 100,
 		}
 	},
 	"lint": {
 		"files": {
-			"include": ["core/"]
+			"include": ["core/", "mod.ts"]
 		},
 		"rules": {
 			"tags": ["recommended"]

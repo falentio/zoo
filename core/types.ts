@@ -1,11 +1,7 @@
-interface ImportMap {
-	imports?: Record<string, string>;
-	scopes?: Record<string, Record<string, string>>;
-}
-
 interface Registry {
+	getInfo: (name: string) => Promise<Info>;
 	getLatest: (name: string) => Promise<string>;
-	getImportMap: (dependency: Required<Dependency>) => ImportMap;
+	getDependency: (input: Required<RegistryInput>) => Dependency | Promise<Dependency>;
 }
 
 type RegistryName =
@@ -30,41 +26,81 @@ interface RegistryServer extends Record<RegistryName, string | null> {
 		| "statically";
 }
 
-type IDependency<T extends RegistryServer> = {
-	[K in keyof T]: {
+interface BaseInput {
+	registry: string;
+	name: string;
+	version?: string;
+	path?: string;
+	server?: string;
+	alias?: string;
+}
+
+type RegistryInput = {
+	[K in keyof RegistryServer]: {
 		registry: K;
 		name: string;
 		version?: string;
 		path?: string;
-		server?: T[K];
+		server?: RegistryServer[K];
 		alias?: string;
+		workspace?: string | string[];
 	};
-}[keyof T];
+}[keyof RegistryServer];
 
-type Dependency = IDependency<RegistryServer>;
-
-interface CustomDependency {
+interface Dependency {
+	// name of dependency
 	name: string;
+	// url to dependency file
 	from: string;
-	importMap?: string | ImportMap;
+	// url to dependency dir(optional, will resolved from folder of file)
+	dir?: string;
+	// import map of dependency
+	importMap?: string;
+	// directory that need this dependency, default to "./"
+	workspace?: string | string[];
+}
+
+interface ImportMap {
+	imports?: Record<string, string>;
+	scopes?: Record<string, Record<string, string>>;
 }
 
 interface JsdelivrResponse {
-	tags: Record<string, string>;
+	tags: Record<string, string | undefined>;
 	versions: string[];
 }
 
 interface NestlandResponse {
 	latestVersion: string;
+	packageUploadNames: string[];
+}
+
+interface Info {
+	latest: string;
+	versions: string[];
+}
+
+interface Config {
+	zooOptions?: ZooOptions;
+	dependencies: (Dependency | RegistryInput)[];
+}
+
+interface ZooOptions {
+	defaultServer?: Partial<RegistryServer>;
+	// it will add on both "./" and "./*"
+	workspaceShadowing?: boolean;
 }
 
 export type {
-	CustomDependency,
+	Config,
 	Dependency,
 	ImportMap,
+	Info,
 	JsdelivrResponse,
 	NestlandResponse,
 	Registry,
+	RegistryInput,
 	RegistryName,
 	RegistryServer,
+	ZooOptions,
 };

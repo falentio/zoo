@@ -1,185 +1,194 @@
 import type {
 	Dependency,
-	ImportMap,
+	Info,
 	JsdelivrResponse,
 	NestlandResponse,
 	Registry,
+	RegistryInput,
 } from "./types.ts";
-import * as path from "path";
 
-const std = new class implements Registry {
-	#latest?: string = undefined;
-	async getLatest(_name: string): Promise<string> {
-		if (this.#latest !== undefined) {
-			return this.#latest;
+import { FailedToFetch, InvalidInput } from "./error.ts";
+
+export const std: Registry = new class implements Registry {
+	#Info: undefined | Info = undefined;
+	async getInfo(_name: string): Promise<Info> {
+		if (this.#Info !== undefined) {
+			return this.#Info;
 		}
-		const response = await fetch("https://deno.land/std", {
-			redirect: "manual",
-		});
-		const result = response.headers
-			.get("location")
-			?.split("@")[1]
-			?.split("/")[0];
-		if (result === undefined || response.status !== 302) {
-			throw new Error("cannt get latest version from std");
-		}
-		return this.#latest = result;
-	}
-	getImportMap(dependency: Required<Dependency>): ImportMap {
-		const dir =
-			`https://deno.land/std@${dependency.version}/${dependency.name}/`;
-		const file = path.join(dir, dependency.path).replace("/", "//");
-		return <ImportMap> {
-			imports: {
-				[dependency.alias]: file,
-				[dependency.alias + "/"]: dir,
+		const response = await fetch("https://cdn.deno.land/std/meta/versions.json", {
+			headers: {
+				"User-Agent": "https://github.com/Falentio/zoo",
 			},
+		});
+		const json = <Info> await response.json();
+		return this.#Info = json;
+	}
+	async getLatest(_name: string): Promise<string> {
+		const { latest } = await this.getInfo(_name);
+		return latest;
+	}
+	getDependency(input: Required<RegistryInput>): Dependency {
+		const dir = `https://deno.land/std@${input.version}/${input.name}/`;
+		const file = new URL(input.path, dir).href;
+		return <Dependency> {
+			name: input.alias,
+			from: file,
+			workspace: input.workspace,
+			dir,
 		};
 	}
 }();
 
-const github = new class implements Registry {
-	async getLatest(name: string): Promise<string> {
-		try {
-			const response = await fetch(
-				`https://data.jsdelivr.com/v1/package/gh/${name}`,
-			);
-			if (response.status !== 200) {
-				throw new Error();
-			}
-			const json = await response.json() as JsdelivrResponse;
-			return json.versions[0];
-		} catch {
-			throw new Error(
-				`cannt get latest version of ${name} from npm`,
-			);
+export const github: Registry = new class implements Registry {
+	async getInfo(name: string): Promise<Info> {
+		const response = await fetch(`https://data.jsdelivr.com/v1/package/gh/${name}`, {
+			headers: {
+				"User-Agent": "https://github.com/Falentio/zoo",
+			},
+		});
+		const { tags, versions } = <JsdelivrResponse> await response.json();
+		const latest = tags.latest || versions[0];
+		if (latest === undefined) {
+			throw new FailedToFetch(`cannt find latest version of ${name} from github`);
 		}
+		return <Info> {
+			latest,
+			versions,
+		};
 	}
-	#dir<T>(dependency: Required<Dependency>): string {
-		switch (dependency.server) {
+	async getLatest(name: string): Promise<string> {
+		const { latest } = await this.getInfo(name);
+		return latest;
+	}
+	#dir<T>(input: Required<RegistryInput>): string {
+		switch (input.server) {
 			case "jsdelivr":
-				return `https://cdn.jsdelivr.net/gh/${dependency.name}/${dependency.version}/`;
+				return `https://cdn.jsdelivr.net/gh/${input.name}@${input.version}/`;
 			case "statically":
-				return `https://cdn.statically.io/gh/${dependency.name}/${dependency.version}/`;
+				return `https://cdn.statically.io/gh/${input.name}@${input.version}/`;
 			case "raw":
-				return `https://raw.githubusercontent.com/${dependency.name}/${dependency.version}/`;
+				return `https://raw.githubusercontent.com/${input.name}/${input.version}/`;
 			default:
-				throw new Error(
-					`invalid server for ${dependency.name} at github`,
+				throw new InvalidInput(
+					`invalid server for ${input.name} at github, received: '${input.server}'`,
 				);
 		}
 	}
-	getImportMap(dependency: Required<Dependency>): ImportMap {
-		const dir = this.#dir(dependency);
-		const file = path.join(dir, dependency.path).replace("/", "//");
-		return <ImportMap> {
-			imports: {
-				[dependency.alias]: file,
-				[dependency.alias + "/"]: dir,
-			},
+	getDependency(input: Required<RegistryInput>): Dependency {
+		const dir = this.#dir(input);
+		const file = new URL(input.path, dir).href;
+		return <Dependency> {
+			name: input.alias,
+			from: file,
+			workspace: input.workspace,
+			dir,
 		};
 	}
 }();
 
-const npm = new class implements Registry {
+export const npm: Registry = new class implements Registry {
+	async getInfo(name: string): Promise<Info> {
+		const response = await fetch(`https://data.jsdelivr.com/v1/package/npm/${name}`, {
+			headers: {
+				"User-Agent": "https://github.com/Falentio/zoo",
+			},
+		});
+		const { tags, versions } = <JsdelivrResponse> await response.json();
+		const latest = tags.latest || versions[0];
+		if (latest === undefined) {
+			throw new FailedToFetch(`cannt find latest version of ${name} from npm`);
+		}
+		return <Info> {
+			latest,
+			versions,
+		};
+	}
 	async getLatest(name: string): Promise<string> {
-		try {
-			const response = await fetch(
-				`https://data.jsdelivr.com/v1/package/npm/${name}`,
-			);
-			const json = await response.json() as JsdelivrResponse;
-			if (response.status !== 200) {
-				throw new Error();
-			}
-			return json.tags.latest || json.versions[0];
-		} catch {
-			throw new Error(
-				`cannt get latest version of ${name} from npm`,
-			);
-		}
+		const { latest } = await this.getInfo(name);
+		return latest;
 	}
-	#file(dependency: Required<Dependency>): string {
-		switch (dependency.server) {
+	#file(input: Required<RegistryInput>): string {
+		switch (input.server) {
 			case "jsdelivr":
-				return `https://cdn.jsdelivr.net/npm/${dependency.name}@${dependency.version}`;
+				return `https://cdn.jsdelivr.net/npm/${input.name}@${input.version}`;
 			case "skypack":
-				return `https://cdn.skypack.dev/${dependency.name}@${dependency.version}?dts`;
+				return `https://cdn.skypack.dev/${input.name}@${input.version}?dts`;
 			case "esm.sh":
-				return `https://esm.sh/${dependency.name}@${dependency.version}`;
+				return `https://esm.sh/${input.name}@${input.version}`;
 			case "jspm":
-				return `https://ga.jspm.io/npm:${dependency.name}@${dependency.version}`;
+				return `https://ga.jspm.io/npm:${input.name}@${input.version}`;
 			default:
-				throw new Error(`invalid server for ${dependency.name} at npm`);
+				throw new InvalidInput(
+					`invalid server for ${input.name} at npm, received: '${input.server}'`,
+				);
 		}
 	}
-	getImportMap(dependency: Required<Dependency>): ImportMap {
-		const file = this.#file(dependency);
+	getDependency(input: Required<RegistryInput>): Dependency {
+		const file = this.#file(input);
 		const url = new URL(file);
 		url.pathname += "/";
 		const dir = url.href;
-		return <ImportMap> {
-			imports: {
-				[dependency.alias]: file,
-				[dependency.alias + "/"]: dir,
-			},
+		return <Dependency> {
+			name: input.alias,
+			from: file,
+			workspace: input.workspace,
+			dir,
 		};
 	}
 }();
 
-const denoland = new class implements Registry {
-	async getLatest(name: string): Promise<string> {
-		const response = await fetch("https://deno.land/x/" + name, {
-			redirect: "manual",
+export const denoland: Registry = new class implements Registry {
+	async getInfo(name: string): Promise<Info> {
+		const response = await fetch(`https://cdn.deno.land/${name}/meta/versions.json`, {
+			headers: {
+				"User-Agent": "https://github.com/Falentio/zoo",
+			},
 		});
-		const result = response.headers
-			.get("location")
-			?.split("@")[1]
-			?.split("/")[0];
-		if (result === undefined || response.status !== 302) {
-			throw new Error(
-				`cannt get latest version of ${name} from denoland`,
-			);
-		}
-		return result;
+		const json = <Info> await response.json();
+		return json;
 	}
-	getImportMap(dependency: Required<Dependency>): ImportMap {
-		const dir =
-			`https://deno.land/x/${dependency.name}@${dependency.version}/`;
-		const file = path.join(dir, dependency.path).replace("/", "//");
-		return <ImportMap> {
-			imports: {
-				[dependency.alias]: file,
-				[dependency.alias + "/"]: dir,
-			},
-		};
-	}
-}();
-
-const nestland = new class implements Registry {
 	async getLatest(name: string): Promise<string> {
-		try {
-			const response = await fetch(
-				`https://x.nest.land/api/package/${name}`,
-			);
-			const json = await response.json() as NestlandResponse;
-			return json.latestVersion.split("@")[1];
-		} catch {
-			throw new Error(
-				`cannt get latest version of ${name} from nestland`,
-			);
-		}
+		const { latest } = await this.getInfo(name);
+		return latest;
 	}
-	getImportMap(dependency: Required<Dependency>): ImportMap {
-		const dir =
-			`https://x.nest.land/${dependency.name}@${dependency.version}/`;
-		const file = path.join(dir, dependency.path).replace("/", "//");
-		return <ImportMap> {
-			imports: {
-				[dependency.alias]: file,
-				[dependency.alias + "/"]: dir,
-			},
+	getDependency(input: Required<RegistryInput>): Dependency {
+		const dir = `https://deno.land/x/${input.name}@${input.version}/`;
+		const file = new URL(input.path, dir).href;
+		return <Dependency> {
+			name: input.alias,
+			from: file,
+			workspace: input.workspace,
+			dir,
 		};
 	}
 }();
 
-export { denoland, github, nestland, npm, std };
+export const nestland: Registry = new class implements Registry {
+	async getInfo(name: string): Promise<Info> {
+		const response = await fetch(`https://x.nest.land/api/package/${name}`, {
+			headers: {
+				"User-Agent": "https://github.com/Falentio/zoo",
+			},
+		});
+		const { latestVersion: latest, packageUploadNames } = <NestlandResponse> await response
+			.json();
+		return <Info> {
+			latest,
+			versions: packageUploadNames.map((a: string) => a.split("@")[1] || a),
+		};
+	}
+	async getLatest(name: string): Promise<string> {
+		const { latest } = await this.getInfo(name);
+		return latest;
+	}
+	getDependency(input: Required<RegistryInput>): Dependency {
+		const dir = `https://x.nest.land/${input.name}@${input.version}/`;
+		const file = new URL(input.path, dir).href;
+		return <Dependency> {
+			name: input.alias,
+			from: file,
+			workspace: input.workspace,
+			dir,
+		};
+	}
+}();
