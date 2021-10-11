@@ -89,7 +89,7 @@ Deno.test("[ADD] from raw url with import map", async () => {
 
 Deno.test("[ADD] using all possible input", async () => {
 	const zoo = new Zoo({
-		workspaceShadowing: false,
+		shadowing: false,
 	});
 	const map = await zoo
 		.add({
@@ -130,14 +130,14 @@ Deno.test("[ADD] using all possible input", async () => {
 			name: "zoo",
 			from: "https://cdn.statically.io/gh/Falentio/zoo@dev/core/zoo.ts",
 			importMap: "https://cdn.statically.io/gh/Falentio/zoo@dev/import-map.json",
-			workspace: "./cli",
+			scope: "./cli",
 		})
 		.getMap();
 	console.log(map);
 });
 
-Deno.test("[ADD] from configuration json", async () => {
-	const zoo = Zoo.fromConfig({
+Deno.test("[ADD] in constructor", async () => {
+	const zoo = new Zoo({
 		dependencies: [{
 			registry: "github",
 			name: "Falentio/jaran",
@@ -147,18 +147,18 @@ Deno.test("[ADD] from configuration json", async () => {
 			registry: "npm",
 			name: "ky",
 			server: "skypack",
-			workspace: "./cli",
+			scope: "./cli",
 		}],
 	});
 	console.log(await zoo.getMap());
 });
 
-Deno.test("[ADD] from raw url with workspace", async () => {
+Deno.test("[ADD] from raw url with scope", async () => {
 	const zoo = new Zoo();
 	zoo.add({
 		name: "zoo",
 		from: "https://cdn.statically.io/gh/Falentio/zoo@dev/core/zoo.ts",
-		workspace: "./cli",
+		scope: "./cli",
 	});
 	const map = await zoo.getMap();
 	console.log(map);

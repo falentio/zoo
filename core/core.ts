@@ -1,5 +1,4 @@
 import type {
-	Config,
 	Dependency,
 	ImportMap,
 	Registry,
@@ -29,7 +28,12 @@ function isRegistryInput(a: any): a is RegistryInput {
 
 function parseImportMap(a: string, from: string): ImportMap {
 	// deno-lint-ignore no-explicit-any
-	const json: Record<string, any> = JSON.parse(a);
+	let json: Record<string, any>;
+	try {
+		json = JSON.parse(a);
+	} catch {
+		throw new InvalidInput("invalid json from " + from);
+	}
 	const keys = Object.keys(json);
 	if (
 		keys.length < 1 &&
@@ -77,21 +81,19 @@ export class Zoo {
 	constructor(opts: ZooOptions = {}) {
 		const {
 			defaultServer = {},
-			workspaceShadowing = true,
+			shadowing = true,
+			dependencies = [],
 		} = opts;
 		this.defaultServer = Object.assign({}, DEFAULT_SERVER, defaultServer);
-		this.workspaceShadowing = workspaceShadowing;
-	}
-	static fromConfig(config: Config) {
-		const zoo = new Zoo(config.zooOptions);
-		for (const dependency of config.dependencies) {
-			zoo.add(dependency);
+		this.shadowing = shadowing;
+		for (const dependency of dependencies) {
+			this.add(dependency);
 		}
-		return zoo;
 	}
 	defaultServer: RegistryServer;
-	workspaceShadowing: boolean;
+	shadowing: boolean;
 	#deps: (Dependency | Promise<Dependency>)[] = [];
+	#scope = "./";
 
 	async #joinImportMap(importMap: Required<ImportMap>, url: string): Promise<void> {
 		try {
@@ -126,35 +128,40 @@ export class Zoo {
 		};
 	}
 
-	async getMap(): Promise<ImportMap> {
+	async getMap(stringify?: false): Promise<ImportMap>;
+	async getMap(stringify?: true): Promise<string>;
+	async getMap(stringify = false): Promise<ImportMap | string> {
 		const importMap: Required<ImportMap> = {
 			imports: {},
 			scopes: {},
 		};
 		for (const dependency of await this.getDeps()) {
-			let workspace: string[];
-			if (dependency.workspace === undefined) {
-				workspace = ["./"];
-			} else if (typeof dependency.workspace === "string") {
-				workspace = [dependency.workspace];
-			} else if (Array.isArray(dependency.workspace)) {
-				workspace = dependency.workspace;
+			let scope: string[];
+			if (dependency.scope === undefined) {
+				scope = [this.#scope];
+			} else if (typeof dependency.scope === "string") {
+				scope = [dependency.scope];
+			} else if (Array.isArray(dependency.scope)) {
+				({ scope } = dependency);
 			} else {
 				// deno-fmt-ignore
-				throw new InvalidInput("invalid workspace value, received: " + typeof dependency.workspace);
+				throw new InvalidInput("invalid scope value, received: " + typeof dependency.scope);
 			}
-			if (this.workspaceShadowing) {
-				workspace.push("./");
+			if (this.shadowing) {
+				scope.push("./");
 			}
-			workspace.forEach(this.#joinWorkspace(importMap, dependency));
+			scope.forEach(this.#joinWorkspace(importMap, dependency));
 			if (dependency.importMap) {
 				await this.#joinImportMap(importMap, dependency.importMap);
 			}
 		}
+		if (stringify) {
+			return JSON.stringify(importMap, null, "\t");
+		}
 		return importMap;
 	}
 
-	getDeps(): Promise<(Dependency)[]> {
+	getDeps(): Promise<Dependency[]> {
 		return Promise.all(this.#deps)
 			.then((r) => r.sort((a, b) => a.name.localeCompare(b.name)));
 	}
@@ -173,11 +180,16 @@ export class Zoo {
 		if (input.alias === undefined) {
 			input.alias = input.name;
 		}
-		if (input.workspace === undefined) {
-			input.workspace = "./";
+		if (input.scope === undefined) {
+			input.scope = this.#scope;
 		}
 		const dep: Dependency = await r.getDependency(input as Required<RegistryInput>);
 		return dep;
+	}
+
+	scope(path: `./${string}`): this {
+		this.#scope = path;
+		return this;
 	}
 
 	add(dependency: Promise<Dependency> | Dependency | RegistryInput): this {
@@ -186,5 +198,40 @@ export class Zoo {
 		}
 		this.#deps.push(dependency);
 		return this;
+	}
+
+	npm(name: string): this {
+		return this.add({
+			registry: "npm",
+			name,
+		});
+	}
+
+	github(name: string): this {
+		return this.add({
+			registry: "github",
+			name,
+		});
+	}
+
+	std(name: string): this {
+		return this.add({
+			registry: "std",
+			name,
+		});
+	}
+
+	denoland(name: string): this {
+		return this.add({
+			registry: "denoland",
+			name,
+		});
+	}
+
+	nestland(name: string): this {
+		return this.add({
+			registry: "nestland",
+			name,
+		});
 	}
 }

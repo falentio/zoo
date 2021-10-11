@@ -43,7 +43,7 @@ type RegistryInput = {
 		path?: string;
 		server?: RegistryServer[K];
 		alias?: string;
-		workspace?: string | string[];
+		scope?: string | string[];
 	};
 }[keyof RegistryServer];
 
@@ -57,7 +57,7 @@ interface Dependency {
 	// import map of dependency
 	importMap?: string;
 	// directory that need this dependency, default to "./"
-	workspace?: string | string[];
+	scope?: string | string[];
 }
 
 interface ImportMap {
@@ -80,19 +80,17 @@ interface Info {
 	versions: string[];
 }
 
-interface Config {
-	zooOptions?: ZooOptions;
-	dependencies: (Dependency | RegistryInput)[];
-}
-
 interface ZooOptions {
 	defaultServer?: Partial<RegistryServer>;
 	// it will add on both "./" and "./*"
-	workspaceShadowing?: boolean;
+	shadowing?: boolean;
+	dependencies?: (Dependency | RegistryInput)[];
 }
 
+type DefaultServer = Partial<RegistryServer>;
+
 export type {
-	Config,
+	DefaultServer,
 	Dependency,
 	ImportMap,
 	Info,

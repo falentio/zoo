@@ -1,7 +1,7 @@
 {
 	"fmt": {
 		"files": {
-			"include": ["core/", "mod.ts"]
+			"include": ["cli/","core/", "mod.ts"]
 		},
 		"options": {
 			"useTabs": true,
@@ -12,7 +12,7 @@
 	},
 	"lint": {
 		"files": {
-			"include": ["core/", "mod.ts"]
+			"include": ["cli/","core/", "mod.ts"]
 		},
 		"rules": {
 			"tags": ["recommended"]

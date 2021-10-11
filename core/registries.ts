@@ -33,7 +33,7 @@ export const std: Registry = new class implements Registry {
 		return <Dependency> {
 			name: input.alias,
 			from: file,
-			workspace: input.workspace,
+			scope: input.scope,
 			dir,
 		};
 	}
@@ -80,7 +80,7 @@ export const github: Registry = new class implements Registry {
 		return <Dependency> {
 			name: input.alias,
 			from: file,
-			workspace: input.workspace,
+			scope: input.scope,
 			dir,
 		};
 	}
@@ -131,7 +131,7 @@ export const npm: Registry = new class implements Registry {
 		return <Dependency> {
 			name: input.alias,
 			from: file,
-			workspace: input.workspace,
+			scope: input.scope,
 			dir,
 		};
 	}
@@ -157,7 +157,7 @@ export const denoland: Registry = new class implements Registry {
 		return <Dependency> {
 			name: input.alias,
 			from: file,
-			workspace: input.workspace,
+			scope: input.scope,
 			dir,
 		};
 	}
@@ -187,7 +187,7 @@ export const nestland: Registry = new class implements Registry {
 		return <Dependency> {
 			name: input.alias,
 			from: file,
-			workspace: input.workspace,
+			scope: input.scope,
 			dir,
 		};
 	}
