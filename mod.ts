@@ -1,3 +1,7 @@
+if (import.meta.main) {
+	Deno.exit();
+}
+
 export * from "./core/registries.ts";
 export * from "./core/error.ts";
 export * from "./core/core.ts";

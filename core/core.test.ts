@@ -130,7 +130,6 @@ Deno.test("[ADD] using all possible input", async () => {
 			name: "zoo",
 			from: "https://cdn.statically.io/gh/Falentio/zoo@dev/core/zoo.ts",
 			importMap: "https://cdn.statically.io/gh/Falentio/zoo@dev/import-map.json",
-			scope: "./cli",
 		})
 		.getMap();
 	console.log(map);
@@ -147,19 +146,7 @@ Deno.test("[ADD] in constructor", async () => {
 			registry: "npm",
 			name: "ky",
 			server: "skypack",
-			scope: "./cli",
 		}],
 	});
 	console.log(await zoo.getMap());
-});
-
-Deno.test("[ADD] from raw url with scope", async () => {
-	const zoo = new Zoo();
-	zoo.add({
-		name: "zoo",
-		from: "https://cdn.statically.io/gh/Falentio/zoo@dev/core/zoo.ts",
-		scope: "./cli",
-	});
-	const map = await zoo.getMap();
-	console.log(map);
 });

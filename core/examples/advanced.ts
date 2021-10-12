@@ -1,13 +1,23 @@
 // deno-fmt-ignore-file
 import { Zoo } from "../../mod.ts";
-import type { DefaultServer } from "../../mod.ts";
+import type { ZooOptions, ImportMap } from "../../mod.ts";
 
-const defaultServer: DefaultServer = {
+const defaultServer: ZooOptions["defaultServer"] = {
 	npm: "esm.sh",
 	github: "statically",
 }
 
-await new Zoo({ defaultServer })
+const dependencies: ZooOptions["dependencies"] = [{
+	registry: "npm",
+	name: "ky",
+	server: "jsdelivr"
+},{
+	registry: "denoland",
+	name: "oak",
+	alias: "oak3"
+}]
+
+await new Zoo({ defaultServer, dependencies })
 	.add({
 		registry: "github",
 		name: "oakserver/oak",
@@ -40,7 +50,7 @@ await new Zoo({ defaultServer })
 		from: "https://deno.land/std/path/mod.ts",
 	})
 	.getMap()
-	.then((data) => {
+	.then((data: ImportMap) => { // not required to write types,just for readability for exmples
 		console.log(data)
-		// Deno.writeTextFileSync("import_map.json", data);
+		// Deno.writeTextFileSync("import_map.json", JSON.stringify(data));
 	});

@@ -34,7 +34,7 @@ interface BaseInput {
 	server?: string;
 	alias?: string;
 }
-
+// same as type = {} | {} | {}
 type RegistryInput = {
 	[K in keyof RegistryServer]: {
 		registry: K;
@@ -84,7 +84,7 @@ interface ZooOptions {
 	defaultServer?: Partial<RegistryServer>;
 	// it will add on both "./" and "./*"
 	shadowing?: boolean;
-	dependencies?: (Dependency | RegistryInput)[];
+	dependencies?: (Promise<Dependency> | Dependency | RegistryInput)[];
 }
 
 type DefaultServer = Partial<RegistryServer>;
